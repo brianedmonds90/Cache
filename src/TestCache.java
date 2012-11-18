@@ -51,5 +51,24 @@ public class TestCache {
 		cache.numTagBits=10;
 		assertEquals("0001000000",cache.computeTagOfAddress(cache.hexToBin("10029e12")));
 	}
+	@Test
+	public void testHit(){
+		Cache cache= new Cache();
+		cache.numTagBits=18;
+		cache.numIndexBits=10;
+		assertEquals("False",cache.hit("10029e12"));
+		
+		assertEquals("True",cache.hit("10029e12"));
+	}
+	@Test
+	public void testCacheSize(){
+		Cache cache=new Cache();
+		cache.numIndexBits=10;
+		cache.associativity=4;
+		cache.storage = new Block [(int) Math.pow(2,cache.numIndexBits)][cache.associativity];
+		assertEquals(cache.storage.length,1024);
+		assertEquals(cache.storage[0].length,4);
+	
+	}
 }
 

@@ -7,10 +7,10 @@ public class Block {
 	boolean dirty;
 	boolean valid;
 	int offset, tag,index;
-	ArrayList<Block> blocks;
-	public Block(){
-		blocks=new ArrayList<Block>();
-		
+	//LinkedList 
+	public Block(int offset, int tag){
+		this.offset=offset;
+		this.tag=tag;
 	}
 	
 }

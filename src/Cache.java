@@ -11,6 +11,7 @@ public class Cache {
 	static int numWriteBacks=0;
 	int totalDataStorage, blockSize,associativity,prefetcherSize,numOffsetBits,numIndexBits,numTagBits;
 	File file;
+	Block [][]storage;
 	public Cache(){
 		totalDataStorage=0;
 		blockSize=0;
@@ -20,6 +21,8 @@ public class Cache {
 		numIndexBits=0;
 		numTagBits=0;
 		file=null;
+		storage=null;
+		
 	}
 	void access(char rw, String address){
 
@@ -62,7 +65,15 @@ public class Cache {
 	String computeTagOfAddress(String address){//Given a binary string address, returns
 		//the Tag bits
 		return address.substring(0,this.numTagBits);
+	}
+	Boolean hit(String address){//Given an address returns true or false if the
+		//location is a hit
+		String binaryAddress= hexToBin(address);
+		String index = this.computeIndexofAddress(binaryAddress);
+		String tag = this.computeTagOfAddress(binaryAddress);
+		String offset = this.computeBlockOffset(binaryAddress);
 		
+		return false;
 	}
 	public static void main(String[]args) throws FileNotFoundException{
 		//ArrayList mainArray=commandLineParams();
@@ -76,6 +87,7 @@ public class Cache {
 		cache.numOffsetBits=cache.numBlockOffsetBits();
 		cache.numIndexBits=cache.numLines();
 		cache.numTagBits=cache.numTagBits();
+		cache.storage = new Block [(int) Math.pow(2,cache.numIndexBits)][cache.associativity];
 	//End of code block
 	/*
 	System.out.println("Enter Path of Input File: ");
