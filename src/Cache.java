@@ -22,10 +22,8 @@ public class Cache {
 		numTagBits=0;
 		file=null;
 		storage=null;
-		
 	}
 	void access(char rw, String address){
-
 		if(rw =='r'){
 			numReads++;
 		}
@@ -69,11 +67,26 @@ public class Cache {
 	Boolean hit(String address){//Given an address returns true or false if the
 		//location is a hit
 		String binaryAddress= hexToBin(address);
-		String index = this.computeIndexofAddress(binaryAddress);
-		String tag = this.computeTagOfAddress(binaryAddress);
-		String offset = this.computeBlockOffset(binaryAddress);
+		int index = Cache.binaryToDecimal(this.computeIndexofAddress(binaryAddress));
+		String blockTag = this.computeTagOfAddress(binaryAddress);
+		String blockOffset = this.computeBlockOffset(binaryAddress);
+		for(int j=0;j<Math.pow(2,this.numIndexBits);j++){
+			for(int i=0;i<this.associativity;i++){
+				if(this.storage[j][i]!=null){
+					if(this.storage[j][i].tag.equals(blockTag)){
+						if(this.storage[j][i].offset.equals(blockOffset)){
+						return true;
+						}
+					}
+				}
+			}
+		}
 		
 		return false;
+	}
+	static int binaryToDecimal(String binaryString){
+		
+		return Integer.parseInt(binaryString,2);
 	}
 	public static void main(String[]args) throws FileNotFoundException{
 		//ArrayList mainArray=commandLineParams();
@@ -82,7 +95,7 @@ public class Cache {
 		cache.file=new File("/home/brian/Desktop/projEC/traces/bzip2_trace.txt");
 		cache.totalDataStorage=1000;
 		cache.blockSize=250;
-		cache.associativity=2;
+		cache.associativity=4;
 		cache.prefetcherSize=1;
 		cache.numOffsetBits=cache.numBlockOffsetBits();
 		cache.numIndexBits=cache.numLines();

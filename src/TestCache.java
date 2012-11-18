@@ -56,9 +56,18 @@ public class TestCache {
 		Cache cache= new Cache();
 		cache.numTagBits=18;
 		cache.numIndexBits=10;
-		assertEquals("False",cache.hit("10029e12"));
-		
-		assertEquals("True",cache.hit("10029e12"));
+		cache.numOffsetBits=4;
+		assertEquals(false,cache.hit("10029e12"));
+		Block b= new Block("0010", "000100000000001010");
+		cache.associativity=1;
+		cache.storage = new Block [(int) Math.pow(2,cache.numIndexBits)][cache.associativity];
+		cache.storage[481][0]= b;
+		assertEquals(true,cache.hit("10029e12"));
+	}
+	@Test
+	public void testBinaryToDecimal(){
+		assertEquals(16394,Cache.binaryToDecimal("000100000000001010"));
+		assertEquals(14,Cache.binaryToDecimal("01110"));
 	}
 	@Test
 	public void testCacheSize(){

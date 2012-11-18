@@ -6,11 +6,14 @@ import java.util.ArrayList;
 public class Block {
 	boolean dirty;
 	boolean valid;
-	int offset, tag,index;
+	public String offset, tag;//index;
 	//LinkedList 
-	public Block(int offset, int tag){
+	public Block(String offset, String tag){
 		this.offset=offset;
 		this.tag=tag;
 	}
-	
+	public String toString(){
+		return "Offset: "+offset+"tag: "+tag;
+		
+	}
 }
