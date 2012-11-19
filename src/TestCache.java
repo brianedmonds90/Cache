@@ -52,7 +52,7 @@ public class TestCache {
 		assertEquals("0001000000",cache.computeTagOfAddress(cache.hexToBin("10029e12")));
 	}
 	@Test
-	public void testHit(){
+	public void testHit() throws FileNotFoundException{
 		Cache cache= Cache.init();
 		assertEquals(false,cache.hit("10029e12"));
 		Block b= new Block("00010000000000101001111");
@@ -74,20 +74,34 @@ public class TestCache {
 		assertEquals(cache.storage[0].length,4);
 	}
 	@Test
-	public void testWrite(){
+	public void testWrite() throws FileNotFoundException{
 		Cache cache= Cache.init();
 		cache.write("10029e12");
 		assertEquals(true,cache.hit("10029e12"));
 		//cache.storage = new Block [(int) Math.pow(2,cache.numIndexBits)][cache.associativity];
 	}
 	@Test
-	public void testAccess(){
+	public void testAccessOnNull() throws FileNotFoundException{
 		Cache cache= Cache.init();
-		//cache.access('r', "10029e12");
+		cache.access('r', "10029e12");
+		cache.access('w', "16fff6b8");
 		assertEquals(Cache.numReads,1);
-		assertEquals(cache.storage[0][0].tag,00000000000010000000000);
+		assertEquals(Cache.numWrites,1);
+		assertEquals(cache.storage[0][0].tag,"00010000000000101001111");
+		assertEquals(cache.storage[2][0].tag,"00010110111111111111011");
 		
 		
+	}
+	
+	public void testPrefetcherLoading() throws FileNotFoundException{//Tests loading blocks into cache w/o checking
+		//for matches
+		Cache cache= Cache.init();
+		String line=cache.globalScanner.nextLine();
+		cache.access(line.charAt(0),line.substring(2));
+		cache.loadMemory();
+		assertEquals(cache.storage[0][1].tag,"00010110111111111110111");
+		assertEquals(cache.storage[2][0].tag,"00010110111111111111011");
+		assertEquals(cache.storage[4][0].tag,"00010110111111111111010");
 	}
 	public void testLRUVictim(){
 		/*Cache cache= Cache.init();

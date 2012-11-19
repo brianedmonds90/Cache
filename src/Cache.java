@@ -16,6 +16,7 @@ public class Cache {
 	int totalDataStorage, blockSize,associativity,prefetcherSize,numOffsetBits,numIndexBits,numTagBits;
 	File file;
 	Block [][]storage;
+	Scanner globalScanner;
 	public Cache(){
 		totalDataStorage=0;
 		blockSize=0;
@@ -27,10 +28,11 @@ public class Cache {
 		file=null;
 		storage=null;
 		lruArray=null;
+		Scanner globalScanner=null;
 		//lruStack= new Stack();
 		
 	}
-	void access(char rw, String address, Scanner scan){
+	void access(char rw, String address){
 		numAccesses++;
 		if(rw =='r'){
 			numReads++;
@@ -42,6 +44,7 @@ public class Cache {
 		int index = Cache.binaryToDecimal(this.computeIndexofAddress(binaryAddress));
 		String blockTag = this.computeTagOfAddress(binaryAddress);
 		//System.out.println("Block Tag: "+blockTag);
+		System.out.println("Index: "+index);
 		Boolean hit=false;
 		for(int i=0;i<this.associativity;i++){
 			if(this.storage[index][i]!=null){
@@ -51,12 +54,10 @@ public class Cache {
 					//Set dirty bit here if write/read
 				}
 			}
-			else{
+			else{//Miss and empty space for current address
 				this.storage[index][i]=new Block(blockTag);
-				int k=0;
-				/*while(k<this.prefetcherSize){
-					scan.nextLine();
-				}*/
+				
+				//this.loadMemory();
 				//Bring blocks in from memory
 			}
 		}
@@ -68,6 +69,22 @@ public class Cache {
 		//if Write Back set dirty bit to true
 			//this.storage[index][victim].dirty=true;
 		//Call LRU*/
+		}
+	}
+	public void loadMemory() {
+		int k=this.prefetcherSize*this.blockSize;//Do I need to add an additional line to this?? To account for first block
+		int numLines=k/32;
+		int i=0;
+		String line;
+		Scanner tempScanner= globalScanner;
+		while(i<numLines &&tempScanner.hasNext()){
+			//Load those blocks
+			line=tempScanner.nextLine();
+			line=line.substring(2);
+			System.out.println(line);
+			access('x',line);
+			//System.out.println(line);
+			i++;
 		}
 	}
 	int numBlockOffsetBits(){
@@ -163,11 +180,11 @@ public class Cache {
 	System.out.println("Enter the prefetcher size: ");
 	cache.prefetcherSize=scan.nextInt();
 	 */
-		Scanner scanner=new Scanner(cache.file);
+		//Scanner scanner=new Scanner(cache.file);
 		String line;
-		while(scanner.hasNext()){//Loop through trace files
-			line=scanner.nextLine();
-			cache.access(line.charAt(0),line.substring(2),scanner);//parse trace file for read/write and address
+		while(cache.globalScanner.hasNext()){//Loop through trace files
+			line=cache.globalScanner.nextLine();
+			cache.access(line.charAt(0),line.substring(2));//parse trace file for read/write and address
 		}	
 		System.out.println("Number of Accesses: "+numAccesses);
 		System.out.println("Number of Reads= "+numReads);
@@ -184,9 +201,10 @@ public class Cache {
 		//total number of bits of cache storage, including all data storage, tag storage, valid and dirty bits.
 		//Need EMAT also
 	}
-	static Cache init(){//Init method for quick testing
+	static Cache init() throws FileNotFoundException{//Init method for quick testing
 		Cache cache= new Cache();
-		cache.file=new File("/home/brian/Desktop/projEC/traces/bzip2_trace.txt");
+		cache.file=new File("/home/brian/Downloads/projEC/traces/bzip2_trace.txt");
+		cache.globalScanner = new Scanner(cache.file);
 		cache.totalDataStorage=1024;
 		cache.blockSize=64;
 		cache.associativity=2;

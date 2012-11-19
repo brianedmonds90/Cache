@@ -18,4 +18,8 @@ public class Block {
 		return "Offset: "+offset+"tag: "+tag;
 		
 	}
+	Boolean equals(Block b){
+		if(this.tag==b.tag)return true;
+		return false;
+	}
 }
