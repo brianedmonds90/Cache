@@ -53,15 +53,10 @@ public class TestCache {
 	}
 	@Test
 	public void testHit(){
-		Cache cache= new Cache();
-		cache.numTagBits=18;
-		cache.numIndexBits=10;
-		cache.numOffsetBits=4;
+		Cache cache= Cache.init();
 		assertEquals(false,cache.hit("10029e12"));
-		Block b= new Block("0010", "000100000000001010");
-		cache.associativity=1;
-		cache.storage = new Block [(int) Math.pow(2,cache.numIndexBits)][cache.associativity];
-		cache.storage[481][0]= b;
+		Block b= new Block("00010000000000101001111");
+		cache.storage[0][1]= b;
 		assertEquals(true,cache.hit("10029e12"));
 	}
 	@Test
@@ -77,7 +72,31 @@ public class TestCache {
 		cache.storage = new Block [(int) Math.pow(2,cache.numIndexBits)][cache.associativity];
 		assertEquals(cache.storage.length,1024);
 		assertEquals(cache.storage[0].length,4);
-	
+	}
+	@Test
+	public void testWrite(){
+		Cache cache= Cache.init();
+		cache.write("10029e12");
+		assertEquals(true,cache.hit("10029e12"));
+		//cache.storage = new Block [(int) Math.pow(2,cache.numIndexBits)][cache.associativity];
+	}
+	@Test
+	public void testAccess(){
+		Cache cache= Cache.init();
+		//cache.access('r', "10029e12");
+		assertEquals(Cache.numReads,1);
+		assertEquals(cache.storage[0][0].tag,00000000000010000000000);
+		
+		
+	}
+	public void testLRUVictim(){
+		/*Cache cache= Cache.init();
+		cache.write("10029e12");
+		cache.write(null);
+		cache.write(address);
+		cache.write(address);
+		cache.write(address);
+		assertEquals();*/
 	}
 }
 

@@ -8,9 +8,11 @@ public class Block {
 	boolean valid;
 	public String offset, tag;//index;
 	//LinkedList 
-	public Block(String offset, String tag){
-		this.offset=offset;
+	public Block(String tag){
+		
 		this.tag=tag;
+		valid=true;
+		dirty=false;
 	}
 	public String toString(){
 		return "Offset: "+offset+"tag: "+tag;
