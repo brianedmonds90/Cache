@@ -11,6 +11,8 @@ public class Cache {
 	static int numWriteMisses=0;
 	static int numWriteBacks=0;
 	static int numAccesses=0;
+	static int prefetcherLines=0;
+	
 	//Stack lruStack;
 	Stack [] lruArray;
 	int totalDataStorage, blockSize,associativity,prefetcherSize,numOffsetBits,numIndexBits,numTagBits;
@@ -44,7 +46,7 @@ public class Cache {
 		int index = Cache.binaryToDecimal(this.computeIndexofAddress(binaryAddress));
 		String blockTag = this.computeTagOfAddress(binaryAddress);
 		//System.out.println("Block Tag: "+blockTag);
-		System.out.println("Index: "+index);
+		//System.out.println("Index: "+index);
 		Boolean hit=false;
 		for(int i=0;i<this.associativity;i++){
 			if(this.storage[index][i]!=null){
@@ -56,8 +58,7 @@ public class Cache {
 			}
 			else{//Miss and empty space for current address
 				this.storage[index][i]=new Block(blockTag);
-				
-				//this.loadMemory();
+				this.loadMemory();
 				//Bring blocks in from memory
 			}
 		}
@@ -83,6 +84,7 @@ public class Cache {
 			line=line.substring(2);
 			System.out.println(line);
 			access('x',line);
+			prefetcherLines++;
 			//System.out.println(line);
 			i++;
 		}
@@ -194,10 +196,12 @@ public class Cache {
 		//number of write backs measured in bytes
 		//total number of bytes transferred to/from memory.
 		//total number of blocks pre-fetced
+		int blocksPrefetched= prefetcherLines*32/cache.blockSize;
 		int totalMisses=numReadMisses+numWriteMisses;
 		System.out.println("Total Number of Misses: "+totalMisses);
 		double cacheMissRate=(double)numReadMisses/(double)numReads;
 		System.out.println("Cache miss rate: "+cacheMissRate);
+		System.out.println("Total Number of blocks prefetched: "+blocksPrefetched);
 		//total number of bits of cache storage, including all data storage, tag storage, valid and dirty bits.
 		//Need EMAT also
 	}
