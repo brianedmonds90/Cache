@@ -45,31 +45,31 @@ public class Cache {
 		String binaryAddress= hexToBin(address);
 		int index = Cache.binaryToDecimal(this.computeIndexofAddress(binaryAddress));
 		String blockTag = this.computeTagOfAddress(binaryAddress);
-		//System.out.println("Block Tag: "+blockTag);
-		//System.out.println("Index: "+index);
+		System.out.println("Block Tag: "+blockTag);
 		Boolean hit=false;
 		for(int i=0;i<this.associativity;i++){
 			if(this.storage[index][i]!=null){
 				if(this.storage[index][i].tag.equals(blockTag)&&this.storage[index][i].valid){
-					i=1000;
 					hit=true;
+					lruArray[index].push(i);
+					i=1000;
 					//Set dirty bit here if write/read
 				}
 			}
 			else{//Miss and empty space for current address
 				this.storage[index][i]=new Block(blockTag);
+				System.out.println("Index "+index+", i"+i+", BlockTag: "+blockTag);
+				lruArray[index].push(i);
+				i=1000;
+				if(rw =='r')numReadMisses++;
+				else if(rw=='w')numWriteMisses++;
 				this.loadMemory();
 				//Bring blocks in from memory
 			}
 		}
 		if(!hit){
-			if(rw =='r')numReadMisses++;
-			else if(rw=='w')numWriteMisses++;
-			//int victim=this.lru();
-			//this.storage[index][victim].tag=blockTag;
-		//if Write Back set dirty bit to true
-			//this.storage[index][victim].dirty=true;
-		//Call LRU*/
+			int victim=this.lruVictim(index);
+			//Write policy here
 		}
 	}
 	public void loadMemory() {
@@ -77,15 +77,15 @@ public class Cache {
 		int numLines=k/32;
 		int i=0;
 		String line;
-		Scanner tempScanner= globalScanner;
+		Scanner tempScanner = globalScanner;
 		while(i<numLines &&tempScanner.hasNext()){
 			//Load those blocks
 			line=tempScanner.nextLine();
 			line=line.substring(2);
-			System.out.println(line);
+			
 			access('x',line);
 			prefetcherLines++;
-			//System.out.println(line);
+			
 			i++;
 		}
 	}
@@ -157,15 +157,15 @@ public class Cache {
 		if(loadSuccessfull){
 			return;
 		}
-		int victim=this.lru();
-		this.storage[index][victim].tag=blockTag;
+		//int victim=this.lru();
+		//this.storage[index][victim].tag=blockTag;
 		//if Write Back set dirty bit to true
-		this.storage[index][victim].dirty=true;
+	//	this.storage[index][victim].dirty=true;
 		//Call LRU
 	}
-	int lru(){
+	int lruVictim(int index){
 		//return this.lruStack.lastElement();
-		return 0;
+		return (Integer)this.lruArray[index].elementAt(this.associativity-1);
 	}
 	public static void main(String[]args) throws FileNotFoundException{
 	Cache cache= init();
@@ -207,7 +207,7 @@ public class Cache {
 	}
 	static Cache init() throws FileNotFoundException{//Init method for quick testing
 		Cache cache= new Cache();
-		cache.file=new File("/home/brian/Downloads/projEC/traces/bzip2_trace.txt");
+		cache.file=new File("/home/brian/Desktop/projEC/traces/bzip2_trace.txt");
 		cache.globalScanner = new Scanner(cache.file);
 		cache.totalDataStorage=1024;
 		cache.blockSize=64;

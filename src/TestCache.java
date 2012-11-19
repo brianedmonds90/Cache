@@ -85,32 +85,39 @@ public class TestCache {
 		Cache cache= Cache.init();
 		cache.access('r', "10029e12");
 		cache.access('w', "16fff6b8");
-		assertEquals(Cache.numReads,1);
+		cache.access('r', "10028e12");
+		assertEquals(Cache.numReads,2);
 		assertEquals(Cache.numWrites,1);
 		assertEquals(cache.storage[0][0].tag,"00010000000000101001111");
 		assertEquals(cache.storage[2][0].tag,"00010110111111111111011");
-		
-		
+		assertEquals(cache.storage[0][1].tag,"00010000000000101000111");
 	}
-	
+	@Test
 	public void testPrefetcherLoading() throws FileNotFoundException{//Tests loading blocks into cache w/o checking
 		//for matches
+		Cache mycache= Cache.init();
+		String line=mycache.globalScanner.nextLine();
+		mycache.access(line.charAt(0),line.substring(2));
+		mycache.loadMemory();
+		assertEquals(mycache.storage[0][0].tag,"00010110111111111110111");
+		assertEquals(mycache.storage[2][0].tag,"00010110111111111111011");
+		assertEquals(mycache.storage[4][0].tag,"00010110111111111111010");
+	}
+	@Test
+	public void testLRUBookKeeping() throws FileNotFoundException{
 		Cache cache= Cache.init();
 		String line=cache.globalScanner.nextLine();
 		cache.access(line.charAt(0),line.substring(2));
-		cache.loadMemory();
-		assertEquals(cache.storage[0][1].tag,"00010110111111111110111");
-		assertEquals(cache.storage[2][0].tag,"00010110111111111111011");
-		assertEquals(cache.storage[4][0].tag,"00010110111111111111010");
+		assertEquals(cache.lruArray[3].lastElement(),0);
 	}
-	public void testLRUVictim(){
-		/*Cache cache= Cache.init();
-		cache.write("10029e12");
-		cache.write(null);
-		cache.write(address);
-		cache.write(address);
-		cache.write(address);
-		assertEquals();*/
+	@Test
+	public void testLRUVictimSelection() throws FileNotFoundException{
+		Cache cache= Cache.init();
+		cache.access('r', "10029e12");
+		cache.access('r', "10029e12");
+		//cache.access('r', "10029e12");
+		//cache.access('r', "10029e12");
+		assertEquals(0,cache.lruVictim(0));
 	}
 }
 
