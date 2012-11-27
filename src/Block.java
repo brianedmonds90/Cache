@@ -9,7 +9,6 @@ public class Block {
 	public String offset, tag;//index;
 	//LinkedList 
 	public Block(String tag){
-		
 		this.tag=tag;
 		valid=true;
 		dirty=false;

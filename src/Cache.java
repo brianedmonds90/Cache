@@ -2,6 +2,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Scanner;
 import java.util.Stack;
 public class Cache {
@@ -14,11 +16,12 @@ public class Cache {
 	static int prefetcherLines=0;
 	
 	//Stack lruStack;
-	Stack [] lruArray;
+	LinkedList [] lruArray;
 	int totalDataStorage, blockSize,associativity,prefetcherSize,numOffsetBits,numIndexBits,numTagBits;
 	File file;
 	Block [][]storage;
 	Scanner globalScanner;
+	private Object prefetcher;
 	public Cache(){
 		totalDataStorage=0;
 		blockSize=0;
@@ -30,10 +33,13 @@ public class Cache {
 		file=null;
 		storage=null;
 		lruArray=null;
-		Scanner globalScanner=null;
-		//lruStack= new Stack();
-		
+		Scanner globalScanner=null;		
 	}
+	/*
+	 * Method that take in an address and computes a hit or miss 
+	 * On miss it will call loadMemory() function to 
+	 * deal with such errors
+	 */
 	void access(char rw, String address){
 		numAccesses++;
 		if(rw =='r'){
@@ -45,58 +51,68 @@ public class Cache {
 		String binaryAddress= hexToBin(address);
 		int index = Cache.binaryToDecimal(this.computeIndexofAddress(binaryAddress));
 		String blockTag = this.computeTagOfAddress(binaryAddress);
-		System.out.println("Block Tag: "+blockTag);
 		Boolean hit=false;
 		for(int i=0;i<this.associativity;i++){
 			if(this.storage[index][i]!=null){
 				if(this.storage[index][i].tag.equals(blockTag)&&this.storage[index][i].valid){
 					hit=true;
-					lruArray[index].push(i);
+					this.lruAdding(blockTag,index);//Add the tag of the most recently used
+					//item to the LRU list;
+				if(rw=='w')
+					this.storage[index][i].dirty=true;//Set dirty bit if write access
 					i=1000;
-					//Set dirty bit here if write/read
 				}
 			}
 			else{//Miss and empty space for current address
 				this.storage[index][i]=new Block(blockTag);
-				System.out.println("Index "+index+", i"+i+", BlockTag: "+blockTag);
-				lruArray[index].push(i);
-				i=1000;
+				this.lruAdding(blockTag,index);//Mark the LRU list with the most recently
+				//used item
 				if(rw =='r')numReadMisses++;
-				else if(rw=='w')numWriteMisses++;
-				this.loadMemory();
-				//Bring blocks in from memory
+				else if(rw=='w'){
+					numWriteMisses++;
+					numWriteBacks++;
+					this.storage[index][i].dirty=true;
+				}
+				if(rw!='x')//This check is used to avoid an endless loop of memory accesses
+					this.loadMemory(address,0);//Bring blocks in from memory
+				i=1000;
+				return;
 			}
 		}
-		if(!hit){
+		if(!hit){//Access was not a hit and a entry in the cache needs to be evicted
+			if(rw =='r')numReadMisses++;
+			else if(rw=='w'){
+				numWriteMisses++;
+				numWriteBacks++;
+			}
 			int victim=this.lruVictim(index);
-			//Write policy here
+			this.storage[index][victim]=new Block(blockTag);
+			if(rw=='w')
+				this.storage[index][victim].dirty=true;
+			this.lruAdding(blockTag,index);//[index].add(blockTag);
+			if(rw!='x')
+				this.loadMemory(address,0);
 		}
 	}
-	public void loadMemory() {
-		int k=this.prefetcherSize*this.blockSize;//Do I need to add an additional line to this?? To account for first block
-		int numLines=k/32;
-		int i=0;
-		String line;
-		Scanner tempScanner = globalScanner;
-		while(i<numLines &&tempScanner.hasNext()){
-			//Load those blocks
-			line=tempScanner.nextLine();
-			line=line.substring(2);
-			
-			access('x',line);
+	public void loadMemory(String address,int counter) {//Method is called to access memory on a miss 
+		//computes the address of the next block to fetch into the cache		
+		double add=binaryToDecimal(hexToBin(address));
+		double x= add/(double)blockSize+this.blockSize;
+		String addAccess=Integer.toHexString((int) x);
+		access('x',addAccess);
+		if(counter<this.prefetcherSize){
 			prefetcherLines++;
-			
-			i++;
+			loadMemory(addAccess,++counter);//Recursive call used to load as many prefetched blocks
+			//as necessary 
 		}
 	}
 	int numBlockOffsetBits(){
 		int blockOffset= (int) (Math.log(blockSize)/Math.log(2));
 		return blockOffset;
 	}
-	int numLines(){//Returns the number of lines of a 
+	int numLines(){//Returns the number of lines of the cache
 		int numLines= this.totalDataStorage/(this.blockSize*this.associativity);
 		int bits=(int) (Math.log(numLines)/Math.log(2));
-		//System.out.println("Bits: "+bits);
 		return bits;
 	}
 	int numTagBits(){//Returns the number of tag bits of a particular cache
@@ -122,66 +138,57 @@ public class Cache {
 		//the Tag bits
 		return address.substring(0,this.numTagBits);
 	}
-	Boolean hit(String address){//Given an address returns true or false if the
-		//location is a hit
-		String binaryAddress= hexToBin(address);
-		int index = Cache.binaryToDecimal(this.computeIndexofAddress(binaryAddress));
-		String blockTag = this.computeTagOfAddress(binaryAddress);
-		String blockOffset = this.computeBlockOffset(binaryAddress);
-		for(int j=0;j<Math.pow(2,this.numIndexBits);j++){
-			for(int i=0;i<this.associativity;i++){
-				if(this.storage[j][i]!=null){
-					if(this.storage[j][i].tag.equals(blockTag)&&this.storage[j][i].valid){
-						return true;
-					}
-				}
-			}
-		}
-		return false;
-	}
 	static int binaryToDecimal(String binaryString){
 		
 		return Integer.parseInt(binaryString,2);
 	}
-	void write(String address){
-		String binaryAddress= hexToBin(address);
-		int index = Cache.binaryToDecimal(this.computeIndexofAddress(binaryAddress));
-		String blockTag = this.computeTagOfAddress(binaryAddress);
-		Boolean loadSuccessfull=false;
-		for(int i=0;i<this.associativity;i++){
-			if(this.storage[index][i]==null){
-				this.storage[index][i]=new Block(blockTag);
-				i=1000;
-			}
-		}
-		if(loadSuccessfull){
-			return;
-		}
-		//int victim=this.lru();
-		//this.storage[index][victim].tag=blockTag;
-		//if Write Back set dirty bit to true
-	//	this.storage[index][victim].dirty=true;
-		//Call LRU
-	}
+	//This method return the associativity index to evict given an index of the cache
 	int lruVictim(int index){
 		//return this.lruStack.lastElement();
-		return (Integer)this.lruArray[index].elementAt(this.associativity-1);
+		String temp=(String) this.lruArray[index].peek();
+		for (int i = 0; i < this.associativity; i++) {
+			if(storage[index][i].tag.equals(temp)){
+				return i;
+			}
+		}
+		return -1;
+	}
+	//This method is used for lruBookKeeping
+	//@params blockTag: the tag of the block to be added to the cache
+	//@params index: the index of the line of cache to add to
+	void lruAdding(String blockTag,int index){
+		if(lruArray[index].contains(blockTag)){
+			lruArray[index].remove(blockTag);
+			lruArray[index].add(blockTag);
+			return;
+		}
+		if(lruArray[index].size()<this.associativity){
+			lruArray[index].add(blockTag);
+		}
+		else{
+			lruArray[index].pop();
+			lruArray[index].add(blockTag);
+		}
+		
+		
 	}
 	public static void main(String[]args) throws FileNotFoundException{
-	Cache cache= init();
-	/*
-	System.out.println("Enter Path of Input File: ");
-	Scanner scan = new Scanner(System.in);
-	cache.file= new File(scan.nextLine());
-	System.out.println("Enter Total Data Storage in KB: ");
-	cache.totalDataStorage= scan.nextInt();
-	System.out.println("Enter the block size: ");
-	cache.blockSize=scan.nextInt();
-	System.out.println("Enter the set associativity: ");
-	cache.associativity=scan.nextInt();
-	System.out.println("Enter the prefetcher size: ");
-	cache.prefetcherSize=scan.nextInt();
-	 */
+	//	Cache cache= init();
+		Cache cache= new Cache();
+		cache.file=new File(args[0]);
+		cache.globalScanner = new Scanner(cache.file);
+		cache.totalDataStorage= Integer.parseInt(args[1]);
+		cache.blockSize=Integer.parseInt(args[2]);
+		cache.associativity=Integer.parseInt(args[3]);
+		cache.prefetcherSize=Integer.parseInt(args[4]);
+		cache.numOffsetBits=cache.numBlockOffsetBits();
+		cache.numIndexBits=cache.numLines();
+		cache.numTagBits=cache.numTagBits();
+		cache.storage = new Block [(int) Math.pow(2,cache.numIndexBits)][cache.associativity];
+		cache.lruArray=new LinkedList [(int) Math.pow(2,cache.numIndexBits)];
+		for(int i=0;i<cache.lruArray.length;i++){
+			cache.lruArray[i]=new LinkedList();
+		}
 		//Scanner scanner=new Scanner(cache.file);
 		String line;
 		while(cache.globalScanner.hasNext()){//Loop through trace files
@@ -193,15 +200,16 @@ public class Cache {
 		System.out.println("Number of Writes= "+numWrites);
 		System.out.println("Number of Read Misses= "+numReadMisses);
 		System.out.println("Number of Write Misses= "+numWriteMisses);
-		//number of write backs measured in bytes
-		//total number of bytes transferred to/from memory.
-		//total number of blocks pre-fetced
-		int blocksPrefetched= prefetcherLines*32/cache.blockSize;
+		System.out.println("Number of Write Backs= "+numWriteBacks);
 		int totalMisses=numReadMisses+numWriteMisses;
 		System.out.println("Total Number of Misses: "+totalMisses);
 		double cacheMissRate=(double)numReadMisses/(double)numReads;
 		System.out.println("Cache miss rate: "+cacheMissRate);
-		System.out.println("Total Number of blocks prefetched: "+blocksPrefetched);
+		System.out.println("Total Number of blocks prefetched: "+prefetcherLines);
+		double Tc=2.0+(.2*cache.totalDataStorage);
+		double Tm= 50;
+		double EMAT= Tc + cacheMissRate*Tm;
+		System.out.println("EMAT: "+EMAT+" ns");
 		//total number of bits of cache storage, including all data storage, tag storage, valid and dirty bits.
 		//Need EMAT also
 	}
@@ -214,15 +222,15 @@ public class Cache {
 		cache.associativity=2;
 		cache.prefetcherSize=2;
 		cache.numOffsetBits=cache.numBlockOffsetBits();
-		//System.out.println("Num Offset Bits: "+cache.numOffsetBits);
+		System.out.println("Num Offset Bits: "+cache.numOffsetBits);
 		cache.numIndexBits=cache.numLines();
-		//System.out.println("Num Index Bits: "+cache.numIndexBits);
+		System.out.println("Num Index Bits: "+cache.numIndexBits);
 		cache.numTagBits=cache.numTagBits();
-		//System.out.println("Num Tag Bits: "+cache.numTagBits);
+		System.out.println("Num Tag Bits: "+cache.numTagBits);
 		cache.storage = new Block [(int) Math.pow(2,cache.numIndexBits)][cache.associativity];
-		cache.lruArray=new Stack [(int) Math.pow(2,cache.numIndexBits)];
+		cache.lruArray=new LinkedList [(int) Math.pow(2,cache.numIndexBits)];
 		for(int i=0;i<cache.lruArray.length;i++){
-			cache.lruArray[i]=new Stack();
+			cache.lruArray[i]=new LinkedList();
 		}
 		return cache;
 	}
